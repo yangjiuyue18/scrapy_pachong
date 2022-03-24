@@ -7,27 +7,25 @@ import jieba.posseg as pseg
 
 class QuanguoSpider(scrapy.Spider):
     #爬虫的名字
-    name = 'quanguo'
-    #运行访问的域名
+    name = 'china_today'
     allowed_domains = ['www.jiangsu.gov.cn']
-    #起始访问的地址
-    start_urls = ['http://www.jiangsu.gov.cn/col/col76936/index.html?uid=298841&pageNum=1']
-    #执行start_urls后执行的方法
+    start_urls = ['http://www.jiangsu.gov.cn/col/col76936/index.html']
+
     def parse(self, response):
         #response是返回的对象，相当于request.get()
-        news_list = response.xpath('//*[@id="298841"]/div/ul/li')
-        for news in news_list:
-            target = news.xpath('./a/text()').extract_first()
-            new_url = news.xpath('./a/@href').extract_first()
+        news_list = response.xpath('/html/body/div[1]/div[8]/div/div/div/div/ul/li[1]')
+        target = news_list.xpath('./a/text()').extract_first()
+        new_url = news_list.xpath('./a/@href').extract_first()
 
-            item = ScrapyPachongItem()
-            item['target'] = target
-            new_url = 'http://www.jiangsu.gov.cn' + new_url
-            item['text_url'] = new_url
+        item = ScrapyPachongItem()
+        item['target'] = target
+        new_url = 'http://www.jiangsu.gov.cn' + new_url
+        item['text_url'] = new_url
 
-            yield item
-            yield scrapy.Request(new_url, callback=self.parse_new)
-            time.sleep(3)
+        yield item
+        yield scrapy.Request(new_url, callback=self.parse_new)
+        time.sleep(3)
+
 
     def parse_new(self,response):
         item = ScrapytextItem()
