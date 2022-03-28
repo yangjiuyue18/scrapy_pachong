@@ -12,7 +12,7 @@ import pymysql
 class ScrapyPachongPipeline:
     def __init__(self):
         #连接数据库
-        self.connect = pymysql.connect(host='localhost',port=3306,user='root',password='root',db='quanguo',charset='utf8')
+        self.connect = pymysql.connect(host='10.192.147.44',port=3306,user='root',password='root',db='quanguo',charset='utf8')
         #游标，用来执行数据库
         self.cursor = self.connect.cursor()
 

@@ -147,7 +147,7 @@ class QuanguoSpider(scrapy.Spider):
                         number_today = lst[index + 1]
 
                 elif lst[index] == '境外输入病例':
-                    if lst[index - 1] == '均为' and not provincials_foreign[lst[i]]:
+                    if lst[index - 1] == '均为' and not foreign_today:
                         foreign_today = lst[index - 2]
                     if foreign_today == 0:
                         foreign_today = lst[index + 1]

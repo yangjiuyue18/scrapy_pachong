@@ -7,6 +7,7 @@ import time
 from scrapy import signals
 from selenium.webdriver import Chrome
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from scrapy.http.response.html import HtmlResponse
 
 # useful for handling different item types with a single interface
@@ -76,7 +77,13 @@ class ScrapyPachongDownloaderMiddleware:
     def spider_opened(self,spider):
         #创建selenium的chrome浏览器对象
         # chromedriver.exe已配置在环境变量path中
-        self.chrome = Chrome()
+
+        chromeOptions = webdriver.ChromeOptions()
+        # 加载无窗口浏览器
+        chromeOptions.add_argument('--headless')
+        chromeOptions.add_argument('--disable-dev-shm-usage')
+        chromeOptions.add_argument('--no-sandbox') # 以根用户打身份运行Chrome，使用-no-sandbox标记重新运行Chrome,禁止沙箱启动
+        self.chrome = Chrome(chrome_options=chromeOptions)
 
     def spider_closed(self,spider):
         self.chrome.quit()
