@@ -1,36 +1,47 @@
 import scrapy
-from scrapy.linkextractors import LinkExtractor
-from scrapy.spiders import CrawlSpider, Rule
-from scrapy_pachong.items import ScrapytextItem
+from scrapy_pachong.items import ScrapyPachongItem,ScrapytextItem
 import re
+import time
 import jieba
 import jieba.posseg as pseg
 
-class ChinaListSpider(CrawlSpider):
-    name = 'china_list'
+# 遗憾的是现在国家卫健委发布的信息中，本土病例不再精确到某一个城市，现在只能将代码进行修改
+class QuanguoSpider(scrapy.Spider):
+    #爬虫的名字
+    name = 'china_today2'
     allowed_domains = ['www.jiangsu.gov.cn']
     start_urls = ['http://www.jiangsu.gov.cn/col/col76936/index.html']
 
-    rules = (
-        Rule(LinkExtractor(allow=r'.+\?uid=298841&pageNum=\d'), follow=True),
+    def parse(self, response):
+        #response是返回的对象，相当于request.get()
+        news_list = response.xpath('/html/body/div[1]/div[8]/div/div/div/div/ul/li[1]')
+        target = news_list.xpath('./a/text()').extract_first()
+        new_url = news_list.xpath('./a/@href').extract_first()
 
-        Rule(LinkExtractor(allow='.+/art/\d+/\d+/\d+/art_\d+_\d+.html'),callback='parse_item',follow=False)
-    )
+        item = ScrapyPachongItem()
+        item['target'] = target
+        new_url = 'http://www.jiangsu.gov.cn' + new_url
+        item['text_url'] = new_url
 
-    def parse_item(self, response):
+        yield item
+        yield scrapy.Request(new_url, callback=self.parse_new)
+        time.sleep(3)
+
+
+    def parse_new(self,response):
         item = ScrapytextItem()
-        # 获取标题
+        #获取标题
         ps = response.xpath('//*[@id="barrierfree_container"]/div[7]/div[1]/div/div[1]')
         item['new'] = ps.xpath("./text()").extract_first()
 
-        # 通过re表达式来获取到日期
+        #通过re表达式来获取到日期
         data = response.xpath('//*[@id="barrierfree_container"]/div[7]/div[1]/div/div[2]/font[1]')
         rule = re.compile('\d+-\d+-\d+')
         item['date'] = rule.findall(data.xpath('./text()').extract_first())[0]
 
-        # 获取文本内容
+        #获取文本内容
         text_list = response.xpath('//*[@id="zoom"]/p')
-        text = ''
+        text=''
         for ts in text_list:
             try:
                 text += ts.xpath('./text()').extract()[0]
@@ -96,7 +107,7 @@ class ChinaListSpider(CrawlSpider):
         # 添加自定义数据库
         jieba.load_userdict('D:/毕设项目/爬虫项目/scrapy_pachong/ns.txt')
 
-        # 将所有需要获取的数据先赋值
+        #将所有需要获取的数据先赋值
         number_today = 0
         foreign_today = 0
         citys_today = 0
@@ -121,9 +132,9 @@ class ChinaListSpider(CrawlSpider):
         tai_deal = 0
         tai_heal = 0
         provincials_foreign = provincials.copy()
-        citys_china = citys.copy()
+        citys_china = provincials.copy()
 
-        # 根据词性来对内容进行切割
+        #根据词性来对内容进行切割
         words = pseg.cut(text)
         lst = [x.word for x in words if x.flag == 'ns' or x.flag == 'm']
         print(lst)
@@ -133,6 +144,29 @@ class ChinaListSpider(CrawlSpider):
                 if lst[index] == '新增确诊病例':
                     if number_today == 0:
                         number_today = lst[index + 1]
+
+                elif lst[index] == '本土病例':
+                    if citys_today == 0:
+                        citys_today = lst[index + 1]
+                        if lst[index + 2] == '开始' or lst[index + 1] == '开始':
+                            for i in range(index + 2, len(lst)):
+                                if lst[i] == '结束':
+                                    break
+                                elif lst[i] in citys_china.keys() and not citys_china[lst[i]]:
+                                    # # 因为在城市中会出现 ‘在’ 和 ‘均在’两个词，所以要对两个词进行特殊判断
+                                    # if lst[i - 1] == '均在' or lst[i - 1] == '在':
+                                    #     if lst[i - 2] == '开始' and not citys_china[lst[i]]:
+                                    #         citys_china[lst[i]] = lst[i - 3]
+                                    #     elif not citys_china[lst[i]]:
+                                    #         citys_china[lst[i]] = lst[i - 2]
+                                    # elif lst[i - 2] == '均在' and lst[i] != '北京' and lst[i] != '天津' and lst[i] != '上海' and lst[i] != '重庆' and not citys_china[lst[i]]:
+                                    #     citys_china[lst[i]] = lst[i - 4]
+                                    # elif not citys_china[lst[i]]:
+                                        citys_china[lst[i]] = lst[i + 1]
+                            # 删除空数据的字典
+                            for key in list(citys_china.keys()):
+                                if not citys_china.get(key):
+                                    del citys_china[key]
 
                 elif lst[index] == '境外输入病例':
                     if lst[index - 1] == '均为' and not foreign_today:
@@ -151,30 +185,6 @@ class ChinaListSpider(CrawlSpider):
                         for key in list(provincials_foreign.keys()):
                             if not provincials_foreign.get(key):
                                 del provincials_foreign[key]
-
-                elif lst[index] == '本土病例':
-                    if citys_today == 0:
-                        citys_today = lst[index + 1]
-                    if lst[index + 2] == '开始' or lst[index + 1] == '开始':
-                        for i in range(index + 2, len(lst)):
-                            if lst[i] == '结束':
-                                break
-                            elif lst[i] in citys_china.keys():
-                                # 因为在城市中会出现 ‘在’ 和 ‘均在’两个词，所以要对两个词进行特殊判断
-                                if lst[i - 1] == '均在' or lst[i - 1] == '在':
-                                    if lst[i - 2] == '开始' and not citys_china[lst[i]]:
-                                        citys_china[lst[i]] = lst[i - 3]
-                                    elif not citys_china[lst[i]]:
-                                        citys_china[lst[i]] = lst[i - 2]
-                                elif lst[i - 2] == '均在' and lst[i] != '北京' and lst[i] != '天津' and lst[i] != '上海' and \
-                                        lst[i] != '重庆' and not citys_china[lst[i]]:
-                                    citys_china[lst[i]] = lst[i - 4]
-                                elif not citys_china[lst[i]]:
-                                    citys_china[lst[i]] = lst[i + 1]
-                        # 删除空数据的字典
-                        for key in list(citys_china.keys()):
-                            if not citys_china.get(key):
-                                del citys_china[key]
 
                 elif lst[index] == '新增死亡病例':
                     if lst[index - 1] == '无':
@@ -295,5 +305,6 @@ class ChinaListSpider(CrawlSpider):
         item['tai_number'] = tai_number
         item['provincials_foreign'] = provincials_foreign
         item['citys_china'] = citys_china
+
 
         yield item
