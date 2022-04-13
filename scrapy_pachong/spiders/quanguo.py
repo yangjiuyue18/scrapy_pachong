@@ -132,8 +132,8 @@ class QuanguoSpider(scrapy.Spider):
         ao_heal = 0
         tai_deal = 0
         tai_heal = 0
-        provincials_foreign = provincials
-        citys_china = citys
+        provincials_foreign = provincials.copy()
+        citys_china = citys.copy()
 
         #根据词性来对内容进行切割
         words = pseg.cut(text)
