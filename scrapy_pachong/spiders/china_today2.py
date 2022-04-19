@@ -10,7 +10,7 @@ class QuanguoSpider(scrapy.Spider):
     #爬虫的名字
     name = 'china_today2'
     allowed_domains = ['www.jiangsu.gov.cn']
-    start_urls = ['http://www.jiangsu.gov.cn/col/col76936/index.html']
+    start_urls = ['http://www.jiangsu.gov.cn/col/col76936/index.html?uid=298841&pageNum=1']
 
     def parse(self, response):
         #response是返回的对象，相当于request.get()
@@ -27,7 +27,6 @@ class QuanguoSpider(scrapy.Spider):
         yield scrapy.Request(new_url, callback=self.parse_new)
         time.sleep(3)
 
-
     def parse_new(self,response):
         item = ScrapytextItem()
         #获取标题
@@ -40,11 +39,30 @@ class QuanguoSpider(scrapy.Spider):
         item['date'] = rule.findall(data.xpath('./text()').extract_first())[0]
 
         #获取文本内容
+        text_list_strong = response.xpath('//*[@id="zoom"]/p/strong/text()').extract()
         text_list = response.xpath('//*[@id="zoom"]/p')
         text=''
+        count =0
         for ts in text_list:
             try:
-                text += ts.xpath('./text()').extract()[0]
+                #判断文本中有没有strong标签
+                if text_list_strong[0]:
+                    if count == 0 :
+                        text += ts.xpath('./text()').extract()[0]
+                        text += text_list_strong[0]
+                        text += ts.xpath('./text()').extract()[1]
+                    elif count == 3:
+                        text += ts.xpath('./text()').extract()[0]
+                        text += text_list_strong[1]
+                        text += ts.xpath('./text()').extract()[1]
+                    elif count == 6:
+                        text += text_list_strong[2]
+                        text += ts.xpath('./text()').extract()[0]
+                    else:
+                        text += ts.xpath('./text()').extract()[0]
+                    count+=1
+                else:
+                    text += ts.xpath('./text()').extract()[0]
             except IndexError:
                 pass
 
@@ -150,7 +168,7 @@ class QuanguoSpider(scrapy.Spider):
                         citys_today = lst[index + 1]
                         if lst[index + 2] == '开始' or lst[index + 1] == '开始':
                             for i in range(index + 2, len(lst)):
-                                if lst[i] == '结束':
+                                if lst[i] == '结束' and lst[i-1] != '开始':
                                     break
                                 elif lst[i] in citys_china.keys() and not citys_china[lst[i]]:
                                     # # 因为在城市中会出现 ‘在’ 和 ‘均在’两个词，所以要对两个词进行特殊判断
@@ -159,6 +177,8 @@ class QuanguoSpider(scrapy.Spider):
                                     #         citys_china[lst[i]] = lst[i - 3]
                                     #     elif not citys_china[lst[i]]:
                                     #         citys_china[lst[i]] = lst[i - 2]
+                                    # elif lst[i] == '北京' and lst[i + 1] == '开始' and lst[i + 2] == '结束':
+                                    #     citys_china[lst[i]] = lst[i + 3]
                                     # elif lst[i - 2] == '均在' and lst[i] != '北京' and lst[i] != '天津' and lst[i] != '上海' and lst[i] != '重庆' and not citys_china[lst[i]]:
                                     #     citys_china[lst[i]] = lst[i - 4]
                                     # elif not citys_china[lst[i]]:
@@ -176,7 +196,7 @@ class QuanguoSpider(scrapy.Spider):
                     if lst[index + 2] == '开始' or lst[index + 1] == '开始':
                         # # range(start, stop[, step])将进步值step调整为2,start值默认为0，stop值不能为空
                         for i in range(index + 2, len(lst)):
-                            if lst[i] == '结束':
+                            if lst[i] == '结束' and lst[i-1] != '开始':
                                 break
                             # 将字典中的key与文本中的内容进行比对，如果相同则将值存入
                             elif lst[i] in provincials_foreign.keys() and not provincials_foreign[lst[i]]:
