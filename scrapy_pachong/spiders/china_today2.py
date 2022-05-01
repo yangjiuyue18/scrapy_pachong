@@ -51,13 +51,15 @@ class QuanguoSpider(scrapy.Spider):
                         text += ts.xpath('./text()').extract()[0]
                         text += text_list_strong[0]
                         text += ts.xpath('./text()').extract()[1]
-                    elif count == 3:
-                        text += ts.xpath('./text()').extract()[0]
                         text += text_list_strong[1]
-                        text += ts.xpath('./text()').extract()[1]
-                    elif count == 6:
-                        text += text_list_strong[2]
+                        text += ts.xpath('./text()').extract()[2]
+                    elif count == 4:
                         text += ts.xpath('./text()').extract()[0]
+                        text += text_list_strong[2]
+                        text += ts.xpath('./text()').extract()[1]
+                    # elif count == 6:
+                    #     text += text_list_strong[2]
+                    #     text += ts.xpath('./text()').extract()[0]
                     else:
                         text += ts.xpath('./text()').extract()[0]
                     count+=1
