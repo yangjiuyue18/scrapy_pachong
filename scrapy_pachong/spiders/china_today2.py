@@ -46,7 +46,7 @@ class QuanguoSpider(scrapy.Spider):
         for ts in text_list:
             try:
                 #判断文本中有没有strong标签
-                if text_list_strong[0]:
+                if len(text_list_strong) != 0:
                     if count == 0 :
                         text += ts.xpath('./text()').extract()[0]
                         text += text_list_strong[0]
