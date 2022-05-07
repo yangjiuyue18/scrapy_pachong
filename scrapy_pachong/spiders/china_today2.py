@@ -10,7 +10,7 @@ class QuanguoSpider(scrapy.Spider):
     #爬虫的名字
     name = 'china_today2'
     allowed_domains = ['www.jiangsu.gov.cn']
-    start_urls = ['http://www.jiangsu.gov.cn/col/col76936/index.html?uid=298841&pageNum=1']
+    start_urls = ['http://www.jiangsu.gov.cn/col/col76936/index.html']
 
     def parse(self, response):
         #response是返回的对象，相当于request.get()
@@ -153,6 +153,7 @@ class QuanguoSpider(scrapy.Spider):
         tai_heal = 0
         provincials_foreign = provincials.copy()
         citys_china = provincials.copy()
+        un_citys_china = provincials.copy()
 
         #根据词性来对内容进行切割
         words = pseg.cut(text)
